@@ -2,6 +2,7 @@ var fs          = require('fs'),
     async       = require('async'),
     pg          = require('pg'),
     testSpecs   = require('./tests'),
+    chalk       = require('chalk'),
     client      = new pg.Client();
 
 async.seq(
@@ -53,7 +54,9 @@ function getTests(callback) {
 }
 
 function runTests(testQueries, callback) {
-    var tests = [];
+    var tests   = [],
+        nTests  = 0,
+        nFailed = 0;
 
     Object.keys(testQueries).forEach((testQueryName) => {
         var runAndAssert = async.seq(
@@ -66,8 +69,17 @@ function runTests(testQueries, callback) {
             },
             (resultSet, callback) => {
                 console.log('Testing: ' + testQueryName);
-                testSpecs[testQueryName].testAssertion(resultSet);
-                console.log('Test OK.\n');
+                
+                var passed = testSpecs[testQueryName].testAssertion(resultSet);
+                
+                nTests++;
+                
+                if (passed) {
+                    console.log(chalk.green('Test OK.\n'));
+                } else {
+                    console.error(chalk.red('Test failed.\n'));
+                    nFailed++;
+                }
                 callback();
             });
 
@@ -75,7 +87,10 @@ function runTests(testQueries, callback) {
     });
 
     async.series(tests, (err, result) => {
-        console.log('All tests OK. Exiting.');
+        console.log(!nFailed ? 
+                chalk.green('All tests OK. Exiting.') :
+                chalk.red(`Failed ${ nFailed } test(s).`)
+            );
         process.exit(0);
     });
 }
