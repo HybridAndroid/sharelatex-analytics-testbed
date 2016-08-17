@@ -10,7 +10,13 @@ async.seq(
 	bootstrapTestTable,
 	getTests,
 	runTests
-)();
+)(
+	function(error) {
+		if (error) {
+			throw(error);
+		}
+	}
+);
 
 
 function getSampleData(callback) {
@@ -62,7 +68,7 @@ function runTests(testQueries, callback) {
 		var runAndAssert = async.seq(
 			(callback) => {
 				client.query(testQueries[testQueryName], (err, result) => {
-					if (err) callback(err);
+					if (err) return callback(err);
 
 					callback(null, result);
 				});
@@ -87,6 +93,9 @@ function runTests(testQueries, callback) {
 	});
 
 	async.series(tests, (err, result) => {
+		if (err)
+			console.log(err)
+			process.exit(1)
 		console.log(!nFailed ? 
 				chalk.green('All tests OK. Exiting.') :
 				chalk.red(`Failed ${ nFailed } test(s).`)
